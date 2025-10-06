@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NewsBrief — персональная сводка</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="description" content="NewsBrief — персональный агрегатор: краткие сводки за 2–3 предложения, удобные фильтры и пользовательские RSS." />
+  <meta property="og:title" content="NewsBrief — персональная сводка" />
+  <meta property="og:description" content="Короткие сводки из ваших источников: Habr, VC и любые RSS. Фильтры по ключевым словам и датам." />
+  <meta property="og:type" content="website" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="container">
+    <div class="hero">
+      <div class="hero-left">
+        <h1 class="brand">NewsBrief</h1>
+        <p class="subtitle">Персональный агрегатор новостей. Короткие сводки по 2–3 предложения, удобные фильтры и быстрый переход к первоисточнику.</p>
+        <div class="hero-actions">
+          <button id="theme-toggle" class="btn btn-secondary" type="button">Светлая тема</button>
+        </div>
+      </div>
+      <ul class="chips">
+        <li class="chip">Краткие сводки в 2–3 предложения</li>
+        <li class="chip">Поиск по ключевым словам и датам</li>
+        <li class="chip">Интеграция с Telegram‑ботом</li>
+      </ul>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="setup" class="panel">
+        <div class="panel-icon">⚙️</div>
+        <div class="panel-content">
+          <h2>Настройка ленты новостей</h2>
+          <p class="panel-description">Выберите источники, укажите ключевые слова и период для персонализированной ленты. Мы автоматически соберём свежие новости и создадим краткие сводки по 2–3 предложения.</p>
+        </div>
+
+      <h3 class="section-title">Источники новостей</h3>
+          <div id="sources" class="sources-grid"></div>
+          <div class="sources-summary">
+            <span class="sources-count">Выбрано: <strong id="selected-count">0</strong> источников</span>
+            <button id="toggle-all-sources" class="btn-link">Выбрать все</button>
+          </div>
+
+        <div class="filters-section">
+          <h3 class="section-title">Фильтры и настройки</h3>
+          <div class="filter-group">
+            <label class="filter-label">
+              🔍 Ключевые слова
+              <input id="keyword" type="text" placeholder="например: ИИ, стартап, крипта" class="filter-input" />
+              <small class="filter-hint">Поиск по заголовкам и содержимому статей</small>
+            </label>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">
+              ⏰ Период обновления
+              <select id="refresh" class="filter-input">
+                <option value="5">Каждые 5 минут</option>
+                <option value="15" selected>Каждые 15 минут</option>
+                <option value="30">Каждые 30 минут</option>
+                <option value="60">Каждый час</option>
+              </select>
+              <small class="filter-hint">Как часто проверять новые статьи</small>
+            </label>
+          </div>
+
+          <div class="filter-group">
+            <fieldset class="filter-fieldset">
+              <legend class="filter-legend">Период новостей</legend>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" name="period" value="24h" checked>
+                  <span class="radio-custom"></span>
+                  📰 За последние 24 часа
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="period" value="week">
+                  <span class="radio-custom"></span>
+                  📅 За неделю
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="period" value="month">
+                  <span class="radio-custom"></span>
+                  📆 За месяц
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="period" value="all">
+                  <span class="radio-custom"></span>
+                  🗂️ Все новости
+                </label>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">
+              📅 Даты (если выбран период)
+              <div class="date-inputs">
+                <input id="from-date" type="date" class="filter-input date-input" placeholder="От" />
+                <span class="date-separator">—</span>
+                <input id="to-date" type="date" class="filter-input date-input" placeholder="До" />
+              </div>
+              <small class="filter-hint">Укажите диапазон дат для фильтрации</small>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-actions">
+        <button id="btn-refresh" class="btn btn-primary">
+          <span class="btn-icon">🔄</span>
+          Обновить источники
+        </button>
+        <button id="btn-reload" class="btn btn-secondary">
+          <span class="btn-icon">📋</span>
+          Показать новости
+        </button>
+        <div class="panel-status">
+          <span id="status" class="status-text">Готов к работе</span>
+          <div class="status-indicator"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="feed-section">
+      <h2>Лента</h2>
+      <div id="status" class="status" aria-live="polite"></div>
+      <div id="feed" class="feed"></div>
+      <div class="actions" style="justify-content:center;margin-top:16px">
+        <button id="btn-more">Показать ещё</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="container footer">
+    <span>© 2025 NewsBrief</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
