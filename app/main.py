@@ -14,6 +14,7 @@ from .config import REFRESH_MINUTES
 from .ingest import fetch_and_store
 from .fts import setup_fts
 from .migrate import ensure_schema_updates
+from .bot import BOT_TOKEN
 
 
 @asynccontextmanager
@@ -42,22 +43,40 @@ async def lifespan(app: FastAPI):
     #                 pass
     #         try:
     #             await asyncio.sleep(REFRESH_MINUTES * 60)
-    #         except asyncio.CancelledError:
     #             break
 
     # task = asyncio.create_task(scheduler())
+# Асинхронная функция для запуска бота в отдельном потоке
+import threading
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+def run_bot_in_thread():
+    """Запуск бота в отдельном потоке"""
     try:
-        yield
-    finally:
-        pass
-        # task.cancel()
-        # with contextlib.suppress(BaseException):
-        #     await task
+        from .bot import main
+        main()
+    except Exception as e:
+        print(f"Ошибка запуска бота: {e}")
+
+# Запуск Telegram бота в фоне
+if BOT_TOKEN:
+    # Создаем отдельный поток для бота
+    bot_thread = threading.Thread(target=run_bot_in_thread, daemon=True)
+    bot_thread.start()
+    print(f"🤖 Telegram бот запущен в отдельном потоке с токеном: {BOT_TOKEN[:10]}...")
+else:
+    print("⚠️ TELEGRAM_BOT_TOKEN не настроен - бот отключен")
+
+try:
+    yield
+finally:
+    # Поток бота завершится автоматически с основным приложением
+    print("🛑 Приложение остановлено")
+
 
 
 app = FastAPI(lifespan=lifespan, title="NewsBrief")
-
-# Optional CORS for deployment across origins
 allow_origins = os.getenv("ALLOW_ORIGINS", "").strip()
 if allow_origins:
     origins = [o.strip() for o in allow_origins.split(",") if o.strip()]
