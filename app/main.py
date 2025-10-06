@@ -17,39 +17,9 @@ from .migrate import ensure_schema_updates
 from .bot import BOT_TOKEN
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Initialize DB
-    Base.metadata.create_all(bind=engine)
-    # Apply lightweight schema migrations (e.g., add image_url)
-    ensure_schema_updates(engine)
-    # Initialize FTS5 virtual table and triggers
-    setup_fts(engine)
-
-    # Start background scheduler task (disabled for debugging)
-    # async def scheduler():
-    #     while True:
-    #         try:
-    #             db: Session = SessionLocal()
-    #             await fetch_and_store(db)
-    #         except asyncio.CancelledError:
-    #             break
-    #         except Exception as e:
-    #             print("Ingest error:", e)
-    #         finally:
-    #             try:
-    #                 db.close()
-    #             except Exception:
-    #                 pass
-    #         try:
-    #             await asyncio.sleep(REFRESH_MINUTES * 60)
-    #             break
-
-    # task = asyncio.create_task(scheduler())
-# Асинхронная функция для запуска бота как отдельного процесса
+# Асинхронная функция для запуска Telegram бота как отдельного процесса
 import subprocess
 import sys
-import os
 
 def start_bot_process():
     """Запуск бота как отдельного процесса"""
@@ -59,49 +29,60 @@ def start_bot_process():
         if not token:
             print("⚠️ TELEGRAM_BOT_TOKEN не найден")
             return None
-        
+
         print("🤖 Запуск Telegram бота как отдельного процесса...")
-        
+
         # Запускаем бота в отдельном процессе
         process = subprocess.Popen([
             sys.executable, "-m", "app.bot"
         ], cwd=os.getcwd())
-        
+
         print(f"✅ Бот запущен с PID: {process.pid}")
         return process
-        
+
     except Exception as e:
         print(f"❌ Ошибка запуска бота: {e}")
         return None
 
-# Запуск Telegram бота в фоне
-bot_process = None
-if BOT_TOKEN:
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize DB
+    Base.metadata.create_all(bind=engine)
+    # Apply lightweight schema migrations (e.g., add image_url)
+    ensure_schema_updates(engine)
+    # Initialize FTS5 virtual table and triggers
+    setup_fts(engine)
+
+    # Запуск Telegram бота в фоне
+    bot_process = None
+    if BOT_TOKEN:
+        try:
+            bot_process = start_bot_process()
+            if bot_process:
+                print(f"🤖 Telegram бот запущен с токеном: {BOT_TOKEN[:10]}...")
+            else:
+                print("❌ Не удалось запустить бота")
+        except Exception as e:
+            print(f"❌ Ошибка при запуске бота: {e}")
+    else:
+        print("⚠️ TELEGRAM_BOT_TOKEN не настроен - бот отключен")
+
     try:
-        bot_process = start_bot_process()
+        yield
+    finally:
+        # Остановка бота при завершении приложения
         if bot_process:
-            print(f"🤖 Telegram бот запущен с токеном: {BOT_TOKEN[:10]}...")
-        else:
-            print("❌ Не удалось запустить бота")
-    except Exception as e:
-        print(f"❌ Ошибка при запуске бота: {e}")
-else:
-    print("⚠️ TELEGRAM_BOT_TOKEN не настроен - бот отключен")
-
-try:
-    yield
-finally:
-    # Остановка бота при завершении приложения
-    if bot_process:
-        print("🛑 Остановка бота...")
-        bot_process.terminate()
-        bot_process.wait()
-        print("✅ Бот остановлен")
-    print("🛑 Приложение остановлено")
-
+            print("🛑 Остановка бота...")
+            bot_process.terminate()
+            bot_process.wait()
+            print("✅ Бот остановлен")
+        print("🛑 Приложение остановлено")
 
 
 app = FastAPI(lifespan=lifespan, title="NewsBrief")
+
+# Optional CORS for deployment across origins
 allow_origins = os.getenv("ALLOW_ORIGINS", "").strip()
 if allow_origins:
     origins = [o.strip() for o in allow_origins.split(",") if o.strip()]
