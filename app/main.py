@@ -46,32 +46,57 @@ async def lifespan(app: FastAPI):
     #             break
 
     # task = asyncio.create_task(scheduler())
-# Асинхронная функция для запуска бота в отдельном потоке
-import threading
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
+# Асинхронная функция для запуска бота как отдельного процесса
+import subprocess
+import sys
+import os
 
-def run_bot_in_thread():
-    """Запуск бота в отдельном потоке"""
+def start_bot_process():
+    """Запуск бота как отдельного процесса"""
     try:
-        from .bot import main
-        main()
+        # Получаем токен из окружения
+        token = os.getenv("TELEGRAM_BOT_TOKEN")
+        if not token:
+            print("⚠️ TELEGRAM_BOT_TOKEN не найден")
+            return None
+        
+        print("🤖 Запуск Telegram бота как отдельного процесса...")
+        
+        # Запускаем бота в отдельном процессе
+        process = subprocess.Popen([
+            sys.executable, "-m", "app.bot"
+        ], cwd=os.getcwd())
+        
+        print(f"✅ Бот запущен с PID: {process.pid}")
+        return process
+        
     except Exception as e:
-        print(f"Ошибка запуска бота: {e}")
+        print(f"❌ Ошибка запуска бота: {e}")
+        return None
 
 # Запуск Telegram бота в фоне
+bot_process = None
 if BOT_TOKEN:
-    # Создаем отдельный поток для бота
-    bot_thread = threading.Thread(target=run_bot_in_thread, daemon=True)
-    bot_thread.start()
-    print(f"🤖 Telegram бот запущен в отдельном потоке с токеном: {BOT_TOKEN[:10]}...")
+    try:
+        bot_process = start_bot_process()
+        if bot_process:
+            print(f"🤖 Telegram бот запущен с токеном: {BOT_TOKEN[:10]}...")
+        else:
+            print("❌ Не удалось запустить бота")
+    except Exception as e:
+        print(f"❌ Ошибка при запуске бота: {e}")
 else:
     print("⚠️ TELEGRAM_BOT_TOKEN не настроен - бот отключен")
 
 try:
     yield
 finally:
-    # Поток бота завершится автоматически с основным приложением
+    # Остановка бота при завершении приложения
+    if bot_process:
+        print("🛑 Остановка бота...")
+        bot_process.terminate()
+        bot_process.wait()
+        print("✅ Бот остановлен")
     print("🛑 Приложение остановлено")
 
 
