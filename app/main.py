@@ -8,13 +8,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from .db import Base, engine, SessionLocal
-from .api import router as api_router
-from .config import REFRESH_MINUTES
-from .ingest import fetch_and_store
-from .fts import setup_fts
-from .migrate import ensure_schema_updates
-from .bot import BOT_TOKEN
+from app.db import Base, engine, SessionLocal
+from app.api import router as api_router
+from app.config import REFRESH_MINUTES
+from app.ingest import fetch_and_store
+from app.fts import setup_fts
+from app.migrate import ensure_schema_updates
+from app.bot import BOT_TOKEN
 
 
 # Асинхронная функция для запуска Telegram бота как отдельного процесса

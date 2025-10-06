@@ -12,8 +12,8 @@ from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQuer
 
 # DB imports for persisting user preferences
 from sqlalchemy.orm import Session
-from .db import SessionLocal, engine, Base
-from .models import UserPref
+from app.db import SessionLocal, engine, Base
+from app.models import UserPref
 
 load_dotenv()
 
